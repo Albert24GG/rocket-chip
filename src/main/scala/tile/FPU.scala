@@ -321,13 +321,18 @@ class FPUDecoder(implicit p: Parameters) extends FPUModule()(p) {
   // NRS custom op (opcode 0101011) is decoded here rather than in the main table
   // so we don't have to add a column to every FP decode row. It reads two FP
   // operands and writes one FP result; the NRS arithmetic unit handles it.
+  // Compares and CVT_TO_INT write an int reg through the toint path, CVT_FROM_INT
+  // reads an int reg; this has to match the core's decode of the NRS op.
   val isNRS = io.inst(6,0) === "b0101011".U
+  val nrsOp = io.inst(28,25)
+  val nrsToInt = nrsOp === NRSOp.FEQ || nrsOp === NRSOp.FLT || nrsOp === NRSOp.FLE || nrsOp === NRSOp.CVT_TO_INT
+  val nrsFromInt = nrsOp === NRSOp.CVT_FROM_INT
   s.nrs := isNRS
   when (isNRS) {
     s.ldst       := false.B
-    s.wen        := true.B
-    s.ren1       := true.B
-    s.ren2       := true.B
+    s.wen        := !nrsToInt
+    s.ren1       := !nrsFromInt
+    s.ren2       := !nrsFromInt
     s.ren3       := false.B
     s.swap12     := false.B
     s.swap23     := false.B
@@ -1133,6 +1138,8 @@ class FPU(cfg: FPUParams)(implicit p: Parameters) extends FPUModule()(p) {
   nrsfu.io.in.bits  := fuInput(Some(FType.S))
   nrsfu.io.nrsId    := ex_reg_inst(14,12)
   nrsfu.io.op       := ex_reg_inst(28,25)  // OP = funct7[3:0]
+  when (ex_reg_inst(28,25) === NRSOp.CVT_FROM_INT) { nrsfu.io.in.bits.in1 := io.fromint_data }
+  when (mem_ctrl.nrs) { io.toint_data := nrsfu.io.toint }
 
   val divSqrt_wen = WireDefault(false.B)
   val divSqrt_inFlight = WireDefault(false.B)
@@ -1149,7 +1156,7 @@ class FPU(cfg: FPUParams)(implicit p: Parameters) extends FPUModule()(p) {
   val pipes = List(
     Pipe(fpmu, fpmu.latency, (c: FPUCtrlSigs) => c.fastpipe, fpmu.io.out.bits),
     Pipe(ifpu, ifpu.latency, (c: FPUCtrlSigs) => c.fromint, ifpu.io.out.bits),
-    Pipe(nrsfu, nrsfu.latency, (c: FPUCtrlSigs) => c.nrs, nrsfu.io.out.bits),
+    Pipe(nrsfu, nrsfu.latency, (c: FPUCtrlSigs) => c.nrs && c.wen, nrsfu.io.out.bits),
     Pipe(sfma, sfma.latency, (c: FPUCtrlSigs) => c.fma && c.typeTagOut === S, sfma.io.out.bits)) ++
     (fLen > 32).option({
           val dfma = Module(new FPUFMAPipe(cfg.dfmaLatency, FType.D, cfg.nrs))
@@ -1180,7 +1187,7 @@ class FPU(cfg: FPUParams)(implicit p: Parameters) extends FPUModule()(p) {
 
   val wen = RegInit(0.U((maxLatency-1).W))
   val wbInfo = Reg(Vec(maxLatency-1, new WBInfo))
-  val mem_wen = mem_reg_valid && (mem_ctrl.fma || mem_ctrl.fastpipe || mem_ctrl.fromint || mem_ctrl.nrs)
+  val mem_wen = mem_reg_valid && (mem_ctrl.fma || mem_ctrl.fastpipe || mem_ctrl.fromint || mem_ctrl.nrs && mem_ctrl.wen)
   val write_port_busy = RegEnable(mem_wen && (memLatencyMask & latencyMask(ex_ctrl, 1)).orR || (wen & latencyMask(ex_ctrl, 0)).orR, req_valid)
   ccover(mem_reg_valid && write_port_busy, "WB_STRUCTURAL", "structural hazard on writeback")
 

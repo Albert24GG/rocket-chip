@@ -366,8 +366,16 @@ class FDecode(implicit val p: Parameters) extends DecodeConstants
     FSW->       List(Y,Y,N,N,N,N,N,Y,A2_IMM, A1_RS1, IMM_S, DW_XPR,FN_ADD,   Y,M_XWR,      N,Y,N,N,N,N,N,CSR.N,N,N,N,N),
     FDIV_S->    List(Y,Y,N,N,N,N,N,N,A2_X,   A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,Y,N,N,N,CSR.N,N,N,N,N),
     FSQRT_S->   List(Y,Y,N,N,N,N,N,N,A2_X,   A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,Y,N,N,N,CSR.N,N,N,N,N),
-    // NRS custom op: FP op reading 2 FP regs, writing 1 FP reg (mirrors FADD_S, single-precision).
-    NRS->       List(Y,Y,N,N,N,N,N,N,A2_X,   A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,Y,N,N,N,CSR.N,N,N,N,N))
+    // NRS custom op, single-precision. Arithmetic mirrors FADD_S, compares mirror
+    // FEQ_S (int rd), CVT_TO_INT mirrors FCVT_W_S and CVT_FROM_INT mirrors FCVT_S_W.
+    NRS_FP_00->   List(Y,Y,N,N,N,N,N,N,A2_X, A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,Y,N,N,N,CSR.N,N,N,N,N),
+    NRS_FP_0100-> List(Y,Y,N,N,N,N,N,N,A2_X, A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,Y,N,N,N,CSR.N,N,N,N,N),
+    NRS_FP_10->   List(Y,Y,N,N,N,N,N,N,A2_X, A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,Y,N,N,N,CSR.N,N,N,N,N),
+    NRS_FP_1100-> List(Y,Y,N,N,N,N,N,N,A2_X, A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,Y,N,N,N,CSR.N,N,N,N,N),
+    NRS_CMP_0101->List(Y,Y,N,N,N,N,N,N,A2_X, A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,N,N,N,Y,CSR.N,N,N,N,N),
+    NRS_CMP_011-> List(Y,Y,N,N,N,N,N,N,A2_X, A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,Y,N,N,N,N,Y,CSR.N,N,N,N,N),
+    NRS_TO_INT->  List(Y,Y,N,N,N,N,N,N,A2_X, A1_X,   IMM_X, DW_X,  FN_X,     N,M_X,        Y,N,N,N,N,N,Y,CSR.N,N,N,N,N),
+    NRS_FROM_INT->List(Y,Y,N,N,N,N,N,Y,A2_X, A1_RS1, IMM_X, DW_X,  FN_X,     N,M_X,        N,N,N,Y,N,N,N,CSR.N,N,N,N,N))
 }
 
 class DDecode(implicit val p: Parameters) extends DecodeConstants

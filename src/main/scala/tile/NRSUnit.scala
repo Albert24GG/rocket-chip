@@ -60,6 +60,7 @@ class NRSUnit(val latency: Int)(implicit p: Parameters) extends FPUModule()(p) {
   val io = IO(new Bundle {
     val in    = Flipped(Valid(new FPInput))
     val out   = Valid(new FPResult)
+    val toint = Output(UInt(xLen.W))  // FEQ/FLT/FLE/CVT_TO_INT result, valid in MEM
     val nrsId = Input(UInt(3.W))  // inst[14:12]
     val op    = Input(UInt(4.W))  // inst[28:25]
   })
@@ -165,4 +166,8 @@ class NRSUnit(val latency: Int)(implicit p: Parameters) extends FPUModule()(p) {
   res.exc  := 0.U
 
   io.out := Pipe(io.in.valid, res, latency)
+
+  // Ops with an int rd go through the FPU's toint path, which the core samples
+  // one cycle after EX, so register once instead of going through the pipe.
+  io.toint := RegEnable(out.asSInt.pad(xLen).asUInt, io.in.valid)
 }

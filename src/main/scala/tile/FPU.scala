@@ -105,6 +105,13 @@ object NRS_POSIT_ES3 extends NRS {
   override def getOne(e: Int, s: Int): UInt  = 0.U(1.W) ## 1.U(1.W) ## 0.U((e + s - 2).W)
 }
 
+// Morris and MorrisHEB stay on RoundZero for now. With RoundEven, results are
+// wrong whenever rounding carries out of the fraction (e.g. sqrt(2+a) -> 2 in
+// Viete's pi). The nrshgl encoders round by adding 1 to the packed bits, which
+// only works for encodings where the bit order is the value order (BiasHEB,
+// UnaryHEB). Here the exponent field has a variable length, so the carry ends
+// up in the exponent. Fix: round the mantissa before packing, bump the
+// exponent on overflow.
 object NRS_MORRIS extends NRS {
   private val G = 4
   override def getInternalExponentSize(e: Int, s: Int): Int = Morris.internalExponentSize(G, e + s)
